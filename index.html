@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Glucose App</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: #f2f6fa;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      flex-direction: column;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .app {
+      background: white;
+      width: 90%;
+      max-width: 1200px;
+      padding: 30px 40px;
+      border-radius: 25px;
+      text-align: center;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+      margin: 20px auto;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      color: #007aff;
+    }
+
+    .settings-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #007aff;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 12px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .settings-btn:hover { background: #005ecb; }
+
+    .status {
+      font-weight: bold;
+      font-size: 2rem;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .value {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 25px 0;
+    }
+
+    .glucose-box {
+      padding: 20px 40px;
+      border-radius: 20px;
+      transition: background-color 0.5s ease;
+      display: flex;
+      align-items: center;
+    }
+
+    #glucoseValue {
+      font-size: 5rem;
+      color: white;
+      margin-right: 15px;
+      transition: color 0.5s ease;
+    }
+
+    #trendArrow {
+      font-size: 3rem;
+      transition: transform 0.5s ease, color 0.5s ease;
+    }
+
+    #trendArrow.up { color: white; transform: rotate(0deg); }
+    #trendArrow.down { color: white; transform: rotate(0deg); }
+    #trendArrow.stable { color: white; transform: rotate(0deg); }
+    #trendArrow.up-right { color: white; transform: rotate(20deg); }
+    #trendArrow.up-left { color: white; transform: rotate(-20deg); }
+    #trendArrow.down-right { color: white; transform: rotate(20deg); }
+    #trendArrow.down-left { color: white; transform: rotate(-20deg); }
+
+    canvas {
+      width: 100% !important;
+      height: 400px !important;
+      border-radius: 15px;
+      background: #f9f9f9;
+    }
+
+    #predictionText {
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    #settingsModal {
+      display:none; 
+      position:fixed; 
+      top:50%; left:50%; 
+      transform:translate(-50%,-50%);
+      background:white; 
+      padding:30px; 
+      border-radius:20px; 
+      box-shadow:0 10px 30px rgba(0,0,0,0.3);
+      z-index:1000;
+      text-align:center;
+    }
+    #settingsModal button {
+      padding:10px 20px;
+      margin-top:10px;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:1rem;
+    }
+    #openInsulin {
+      background:#007aff;
+      color:white;
+      display:block;
+      margin: 10px auto;
+    }
+    #autoInject {
+      background:#28a745;
+      color:white;
+      display:block;
+      margin: 10px auto;
+    }
+    #closeSettings {
+      background:#ccc;
+      color:black;
+      display:block;
+      margin: 10px auto 0 auto;
+    }
+
+    .insulin-section {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 15px;
+      margin-top: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      text-align: center;
+      cursor: pointer;
+      display:none;
+    }
+    .insulin-section h2 { color: #007aff; margin-bottom: 15px; }
+    .insulin-inputs { display: none; margin-top: 15px; }
+    .insulin-inputs input {
+      width: 60%; padding: 8px; margin: 10px 0;
+      border-radius: 8px; border: 1px solid #ccc; font-size: 1rem;
+    }
+    .insulin-inputs button {
+      padding: 10px 20px; background-color: #007aff; color: white;
+      border: none; border-radius: 8px; cursor: pointer; font-size: 1rem;
+      margin-left: 10px; transition: background 0.3s ease;
+    }
+    .insulin-inputs button:hover { background-color: #005ecb; }
+    .footer { margin-top: 20px; font-size: 0.9rem; color: #555; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <button class="settings-btn" id="settingsBtn">⚙ Settings</button>
+  <h1>Glucose Monitor</h1>
+  <p id="status" class="status normal">Normal</p>
+
+  <div class="value">
+    <div id="glucoseBox" class="glucose-box" style="background-color: green;">
+      <span id="glucoseValue">110</span>
+      <span id="trendArrow" class="arrow stable">→</span>
+    </div>
+  </div>
+
+  <p id="predictionText">التنبؤ: مستوى السكر طبيعي.</p>
+  <canvas id="glucoseChart"></canvas>
+
+  <div class="insulin-section" id="insulinSection">
+    <h2>💉 ضخ الإنسولين</h2>
+    <div class="insulin-inputs" id="insulinInputs">
+      <label for="mealWeight">أدخل وزن الأكل (غرام):</label><br>
+      <input type="number" id="mealWeight" min="1" placeholder="وزن الأكل">
+      <button id="injectBtn">ضخ الآن</button>
+      <p id="injectStatus"></p>
+    </div>
+  </div>
+
+  <button id="readNFC" style="margin-top:20px; padding:10px 20px;">📡 قراءة NFC</button>
+
+  <div class="footer">صُمم بواسطة إبراهيم العمري</div>
+</div>
+
+<div id="settingsModal">
+  <h2>الإعدادات</h2>
+  <button id="openInsulin">💉 ضخ الإنسولين</button>
+  <button id="autoInject">🔄 ضخ تلقائي</button>
+  <button id="closeSettings">إغلاق</button>
+</div>
+
+<script>
+// ====== صوت إنذار بدون ملف ======
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playBeep(type) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value = type === "high" ? 900 : 600;
+  gain.gain.value = 0.2;
+  osc.start();
+  navigator.vibrate?.(type === "high" ? [500,200,500] : [300,150,300]);
+  setTimeout(() => { osc.stop(); }, 600);
+}
+
+// ====== NFC ======
+const readNFCBtn = document.getElementById('readNFC');
+readNFCBtn.addEventListener('click', async () => {
+  if ('NDEFReader' in window) {
+    try {
+      const ndef = new NDEFReader();
+      await ndef.scan();
+      alert('📡 جاهز لقراءة بطاقة NFC');
+      ndef.onreading = event => {
+        const decoder = new TextDecoder();
+        for (const record of event.message.records) {
+          const text = decoder.decode(record.data);
+          alert('🔹 بطاقة NFC مقروءة: ' + text);
+          playBeep('high'); // تشغيل صوت التنبيه
+        }
+      };
+    } catch (error) {
+      alert("❌ خطأ: " + error);
+    }
+  } else {
+    alert("NFC غير مدعوم في هذا المتصفح");
+  }
+});
+
+// ====== Glucose Chart & Logic ======
+let glucoseData = [];
+let labels = [];
+let maxPoints = 20;
+let previousValue = null;
+const glucoseEl = document.getElementById("glucoseValue");
+const arrowEl = document.getElementById("trendArrow");
+const statusEl = document.getElementById("status");
+const glucoseBox = document.getElementById("glucoseBox");
+const ctx = document.getElementById('glucoseChart').getContext('2d');
+const predictionText = document.getElementById('predictionText');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: { labels: labels, datasets: [{ label: 'Glucose Level', data: glucoseData, borderColor: '#007aff', backgroundColor: 'rgba(0, 122, 255, 0.2)', tension: 0.4, fill:true, pointRadius:5, pointBackgroundColor:'#007aff' }] },
+  options: { animation:{duration:800}, scales:{y:{min:50,max:250}}, plugins:{legend:{display:false}} }
+});
+function updateGlucose() {
+  let value = Math.floor(Math.random()*140)+60;
+  glucoseEl.innerText = value;
+  let prediction = "التنبؤ: مستوى السكر طبيعي.";
+  if(value<70){ glucoseBox.style.backgroundColor="red"; statusEl.innerText="Low"; statusEl.className="status low"; prediction="التنبؤ: احتمال انخفاض مستوى السكر."; playBeep('high'); }
+  else if(value>180){ glucoseBox.style.backgroundColor="orange"; statusEl.innerText="High"; statusEl.className="status high"; prediction="التنبؤ: احتمال ارتفاع مستوى السكر."; playBeep('high'); }
+  else{ glucoseBox.style.backgroundColor="green"; statusEl.innerText="Normal"; statusEl.className="status normal"; }
+  predictionText.innerText = prediction;
+  if(previousValue!==null){
+    let diff = value-previousValue;
+    arrowEl.className="arrow";
+    if(diff>10) arrowEl.classList.add("up");
+    else if(diff>3) arrowEl.classList.add("up-right");
+    else if(diff>0) arrowEl.classList.add("up-left");
+    else if(diff<-10) arrowEl.classList.add("down");
+    else if(diff<-3) arrowEl.classList.add("down-right");
+    else if(diff<0) arrowEl.classList.add("down-left");
+    else arrowEl.classList.add("stable");
+  }
+  previousValue=value;
+  let time = new Date().toLocaleTimeString();
+  glucoseData.push(value);
+  labels.push(time);
+  if(glucoseData.length>maxPoints){ glucoseData.shift(); labels.shift(); }
+  chart.update();
+}
+updateGlucose();
+setInterval(updateGlucose,60000);
+
+// ====== Settings & Insulin ======
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const closeSettings = document.getElementById('closeSettings');
+const openInsulin = document.getElementById('openInsulin');
+const autoInject = document.getElementById('autoInject');
+const insulinSection = document.getElementById('insulinSection');
+const insulinInputs = document.getElementById('insulinInputs');
+const injectBtn = document.getElementById('injectBtn');
+const injectStatus = document.getElementById('injectStatus');
+let autoInjectEnabled = false;
+settingsBtn.addEventListener('click',()=>{settingsModal.style.display='block';});
+closeSettings.addEventListener('click',()=>{settingsModal.style.display='none';});
+openInsulin.addEventListener('click',()=>{insulinSection.style.display='block';settingsModal.style.display='none';});
+autoInject.addEventListener('click',()=>{autoInjectEnabled=!autoInjectEnabled; autoInject.textContent=autoInjectEnabled?"✅ الضخ التلقائي مفعل":"🔄 ضخ تلقائي";});
+insulinSection.addEventListener('click',(e)=>{if(e.target.id==='injectBtn'||e.target.id==='mealWeight') return; if(insulinInputs.style.display==="none"||insulinInputs.style.display===""){insulinInputs.style.display="block"; injectStatus.textContent="";}});
+injectBtn.addEventListener('click',(e)=>{e.stopPropagation(); const weight=document.getElementById('mealWeight').value; if(weight&&weight>0){injectStatus.textContent=`تم ضخ الإنسولين بناءً على ${weight} غرام من الطعام ✅`; injectStatus.style.color="green"; setTimeout(()=>{insulinInputs.style.display="none";},2000);} else{injectStatus.textContent="الرجاء إدخال وزن صحيح ❌"; injectStatus.style.color="red";}});
+</script>
+</body>
+</html>
