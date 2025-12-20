@@ -196,7 +196,16 @@
       <button id="injectBtn">ضخ الآن</button>
       <p id="injectStatus"></p>
     </div>
+  </div><div class="insulin-section" id="raiseSection">
+  
+    <h2>🍬 مساعد رفع السكري</h2>
+  <div class="insulin-inputs" id="raiseInputs">
+    <label for="raiseLevel">الرجاء إدخال مستوى رفع السكري:</label><br>
+    <input type="number" id="raiseLevel" min="1" placeholder="مثال: 20">
+    <button id="raiseBtn">تنفيذ</button>
+    <p id="raiseStatus"></p>
   </div>
+</div>
 
   <button id="readNFC" style="margin-top:20px; padding:10px 20px;">📡 قراءة NFC</button>
 
@@ -206,6 +215,7 @@
 <div id="settingsModal">
   <h2>الإعدادات</h2>
   <button id="openInsulin">💉 ضخ الإنسولين</button>
+  <button id="raiseGlucose">⚠️ مساعد رفع السكري</button>
   <button id="autoInject">🔄 ضخ تلقائي</button>
   <button id="closeSettings">إغلاق</button>
 </div>
@@ -311,6 +321,54 @@ openInsulin.addEventListener('click',()=>{insulinSection.style.display='block';s
 autoInject.addEventListener('click',()=>{autoInjectEnabled=!autoInjectEnabled; autoInject.textContent=autoInjectEnabled?"✅ الضخ التلقائي مفعل":"🔄 ضخ تلقائي";});
 insulinSection.addEventListener('click',(e)=>{if(e.target.id==='injectBtn'||e.target.id==='mealWeight') return; if(insulinInputs.style.display==="none"||insulinInputs.style.display===""){insulinInputs.style.display="block"; injectStatus.textContent="";}});
 injectBtn.addEventListener('click',(e)=>{e.stopPropagation(); const weight=document.getElementById('mealWeight').value; if(weight&&weight>0){injectStatus.textContent=`تم ضخ الإنسولين بناءً على ${weight} غرام من الطعام ✅`; injectStatus.style.color="green"; setTimeout(()=>{insulinInputs.style.display="none";},2000);} else{injectStatus.textContent="الرجاء إدخال وزن صحيح ❌"; injectStatus.style.color="red";}});
+// ====== Raise Glucose Assistant ======
+const raiseBtn = document.getElementById('raiseBtn');
+const raiseSection = document.getElementById('raiseSection');
+const raiseInputs = document.getElementById('raiseInputs');
+const raiseStatus = document.getElementById('raiseStatus');
+const raiseGlucose = document.getElementById('raiseGlucose');
+
+raiseGlucose.addEventListener('click',()=>{
+  raiseSection.style.display='block';
+  settingsModal.style.display='none';
+});
+
+raiseSection.addEventListener('click',(e)=>{
+  if(e.target.id==='raiseBtn'||e.target.id==='raiseLevel') return;
+  if(raiseInputs.style.display==="none"||raiseInputs.style.display===""){
+    raiseInputs.style.display="block";
+    raiseStatus.textContent="";
+  }
+});
+
+raiseBtn.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  const level = parseInt(document.getElementById('raiseLevel').value);
+
+  if(level && level > 0){
+
+    // 🔥 الرقم الحالي للسكر
+    let currentGlucose = parseInt(glucoseEl.innerText);
+
+    // ➕ زيادة السكر بالقيمة المدخلة
+    let newGlucose = currentGlucose + level;
+
+    // تحديث الرقم في الواجهة
+    glucoseEl.innerText = newGlucose;
+
+    // تحديث الرسالة
+    raiseStatus.textContent = `تم رفع مستوى السكر بمقدار ${level} ✅`;
+    raiseStatus.style.color = "green";
+
+    setTimeout(()=>{
+      raiseInputs.style.display = "none";
+    },2000);
+
+  } else {
+    raiseStatus.textContent = "الرجاء إدخال رقم صحيح ❌";
+    raiseStatus.style.color = "red";
+  }
+});
 </script>
 </body>
 </html>
